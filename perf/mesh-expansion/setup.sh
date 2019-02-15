@@ -1,8 +1,13 @@
-export proj="${proj:-istio-testing}"
+export proj="${proj:-jianfeih-test}"
 export zone="${zone:-us-central1-a}"
 export CLUSTER_NAME="${CLUSTER_NAME:-istio-meshexp}"
 export GCE_NAME="${GCE_NAME:-istio-vm}"
 export RELEASE="${RELEASE:-release-1.1-20190209-09-16}"
+
+# TODO: status, unable to curl using service ip. not intercepted by sidecar yet.
+# https://cloud.google.com/kubernetes-engine/docs/how-to/alias-ips, unable to use GKE internal service IP by design.
+# 1. Create ILB.
+# 1. Suppose however, RDS come into play...
 
 # We must create clusters sequentially without specifying --async, otherwise will fail.
 function create_clusters() {
@@ -61,25 +66,26 @@ function install_istio() {
 function prepare_gce_config() {
   GWIP=$(kubectl get -n istio-system service istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo $GWIP
-  ISTIO_SERVICE_CIDR=$(gcloud container clusters describe $K8S_CLUSTER --zone $MY_ZONE --project $MY_PROJECT --format "value(servicesIpv4Cidr)")
+  ISTIO_SERVICE_CIDR=$(gcloud container clusters describe ${CLUSTER_NAME} --zone $zone --format "value(servicesIpv4Cidr)")
   echo -e "ISTIO_CP_AUTH=MUTUAL_TLS\nISTIO_SERVICE_CIDR=$ISTIO_SERVICE_CIDR\n" > cluster.env
 
-  kubectl -n $SERVICE_NAMESPACE get secret istio.default  \
+  kubectl -n istio-system get secrets istio.default  \
     -o jsonpath='{.data.root-cert\.pem}' |base64 --decode > root-cert.pem
-  kubectl -n $SERVICE_NAMESPACE get secret istio.default  \
+  kubectl -n istio-system get secrets istio.default  \
       -o jsonpath='{.data.key\.pem}' |base64 --decode > key.pem
-  kubectl -n $SERVICE_NAMESPACE get secret istio.default  \
+  kubectl -n istio-system get secrets istio.default  \
         -o jsonpath='{.data.cert-chain\.pem}' |base64 --decode > cert-chain.pem
   
-  gcloud compute scp gce-vm.sh $:/home/what-directory-to-use
+   gcloud compute scp gce-vm.sh cert-chain.pem root-cert.pem cluster.env istio-vm:/home/jianfeih
 }
 
 # Deploy bookinfo in two clusters.
 function deploy_bookinfo() {
 	pushd tmp/istio-${RELEASE}
-	# kubectl config use-context "gke_${proj}_${zone}_${CLUSTER_NAME}"
-	# kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml
-	# kubectl apply -f samples/bookinfo/networking/bookinfo-gateway.yaml
+	kubectl config use-context "gke_${proj}_${zone}_${CLUSTER_NAME}"
+	kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml
+	kubectl apply -f samples/bookinfo/networking/bookinfo-gateway.yaml
+	PRODUCT_PAGE_IP=$(kubectl get svc productpage -o jsonpath='{.spec.clusterIP}')
 	# kubectl delete deployment reviews-v3
 	# kubectl config use-context "gke_${proj}_${zone}_${cluster2}"
 	# kubectl apply -f ../../reviews-v3.yaml
