@@ -12,6 +12,8 @@ spec:
       annotations:
         sidecar.istio.io/proxyCPU: 5m
         sidecar.istio.io/proxyMemory: 128M
+        # TODO: replace with options from values.yaml
+        sidecar.istio.io/proxyImage: 'gcr.io/mixologist-142215/proxyv2:suffix4'
       labels:
         app: svc-{{ . }}
     spec:

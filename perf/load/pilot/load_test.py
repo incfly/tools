@@ -16,8 +16,9 @@ import check_metrics
 
 
 # TODO: does this consider namespace?
-def envoy_cds_version_count(prom: Prometheus):
-    return prom.fetch_value('count(count_values("value", envoy_cluster_manager_cds_version))')
+def envoy_cds_version_count(namespace="default": string, prom: Prometheus):
+    return prom.fetch_value(
+        'count(count_values("value", envoy_cluster_manager_cds_version{namespace="%s"}))' % namespace)
 
 
 def setup_pilot_loadtest(instance, svc_entry: int):
@@ -63,12 +64,12 @@ def init_parser():
         description='Program for load test.')
     parser.add_argument('-s', '--start',
         nargs=2, type=int,
-        default=[1000,200],
+        default=[1000,0],
         help='initial number of the services and service entries')
     parser.add_argument(
         '-e', '--end',
         nargs=2, type=int,
-        default=[1000,205],
+        default=[1000,10],
         help='the number of the services and service entries to trigger the push')
     return parser.parse_args()
 
