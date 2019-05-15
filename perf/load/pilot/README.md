@@ -19,19 +19,33 @@ Several special installation setup is needed.
 - Update Prometheus scrape interval from 15s to x seconds
 - Ensure the cluster is appropriated provisioned with enough memory
 
-
 `./load_test.py`, starts large deployment, measure how long it takes for all
 sidecar to receive the same cds version.
 
-TODO
+## Setup
 
-- Fix Pilot/Prometheus/Control Plane scalability problems, resource requirements.
+To support large performance testing, many things need to be specially tuned.
+
+- Install Istio version, e.g., 1.1.2.
+- Pilot resource consumption, 6GB memory, 5 replica.
+- Prometheus resource consumption, update to 0.5 cpu, 10GB memory.
+- Prometheus filtering.
+
+  ```yaml
+  source_labels: [ cluster_name ]
+    regex: '(outbound.*svc-[1-9]+.*pilot-load|inbound|prometheus_stats).*'
+    action: drop
+  ```
+
+- Run `./load-test.py`
+- In a seperate terminal, delete svc-0, `kubectl delete  deployment/svc-0 svc/svc-0 -npilot-load`.
+- Observe the time elapsed for the `svc-0` to disappear.
+
+## TODO
+
 - Ensure prometheus scrape interval is set correctly.
 - `envoy_cluster_manager_cds_version` does not work well when sidecar resource is used.
-- Add annotation for emiting the specific clusters, "sidecar.istio.io/statsInclusionPrefixes": "TBD"
-- Using new proxy image: gcr.io/mixologist-142215/proxyv2:suffix4
-- Removing Promethues load report drop config
-  - `regex: '(outbound|inbound|prometheus_stats).*'`
-  - `regex: 'envoy_cluster_(lb|retry|bind|internal|max|original).*'`
-- Change to `envoy_cluster_manager_cds_version{namespace="pilot-load"}` focusing on the testing namespace.
-- Add query `sum(envoy_cluster_upstream_cx_total{cluster_name=~".*pilot-load.*"})  by (cluster_name)`.
+
+Consider to use annotation
+
+- "sidecar.istio.io/statsInclusionPrefixes": "TBD", "gcr.io/mixologist-142215/proxyv2:suffix4"
