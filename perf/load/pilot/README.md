@@ -41,11 +41,9 @@ To support large performance testing, many things need to be specially tuned.
 - In a seperate terminal, delete svc-0, `kubectl delete  deployment/svc-0 svc/svc-0 -npilot-load`.
 - Observe the time elapsed for the `svc-0` to disappear.
 
-## TODO
+## Notes and TODO
 
 - Ensure prometheus scrape interval is set correctly.
 - `envoy_cluster_manager_cds_version` does not work well when sidecar resource is used.
-
-Consider to use annotation
-
-- "sidecar.istio.io/statsInclusionPrefixes": "TBD", "gcr.io/mixologist-142215/proxyv2:suffix4"
+- Consider to use annotation
+  `"sidecar.istio.io/statsInclusionPrefixes": "TBD", "gcr.io/mixologist-142215/proxyv2:suffix4"`
