@@ -1,0 +1,62 @@
+# iperf client and server measuring the TCP connection overhead.
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: iperf-client
+spec:
+  template:
+    metadata:
+      labels:
+        app: iperf-client
+    spec:
+      containers:
+      - args:
+        - bash
+        - -c
+        - |-
+          while :
+          do
+            # Focus on testing TCP connection overhead.
+            # run 100 iperf client in parallel via xargs.
+            seq 1 100000 | xargs -n 1 -P 100 bash -c "iperf -c iperf-server -p 5000  -n 1 -l 1"
+          done
+        image: gcr.io/jianfeih-test/iperfc:0110a
+        imagePullPolicy: Always
+        name: iperf-client
+---
+# iperf client and server measuring the TCP connection overhead.
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: iperf-server
+spec:
+  template:
+    metadata:
+      labels:
+        app: iperf-server
+    spec:
+      containers:
+      - args:
+        - bash
+        - -c
+        - |-
+          iperf -s -p 5000
+        image: gcr.io/jianfeih-test/iperfc:0110a
+        imagePullPolicy: Always
+        name: iperf-server
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf-server
+  labels:
+    app: iperf-server
+spec:
+  ports:
+  - name: tcp
+    port: 5000
+  selector:
+    app: iperf-server
+---
