@@ -22,7 +22,9 @@ automtls:
   # true or false help us determine the effect of auto mTLS itself
   enable: true
   # The number of the replicas set for the backend service.
-  backendReplicas: 100
+  backendReplicas: 2
+  # the number of front/back service pair exists in the mesh.
+  serviceNumber: !!int 2
 
 prometheus_scrape: false
 

@@ -7,22 +7,26 @@ data:
       numReplicas: {{ .Values.replicas }}
       responseSize: {{ .Values.responseSize }}
       script:
-      - - call:
-            service: {{ .Values.serviceNamePrefix }}0-front
-            size: {{ .Values.requestSize }}
+      - {{- range until (int .Values.automtls.serviceNumber) }}
+        - call:
+            service: {{ $.Values.serviceNamePrefix }}0-front-{{ . }}
+            size: {{ $.Values.requestSize }}
+        {{- end }}
       type: http
-    - name: {{ .Values.serviceNamePrefix }}0-front
-      numReplicas: {{ .Values.replicas }}
-      responseSize: {{ .Values.responseSize }}
+    {{- range until (int .Values.automtls.serviceNumber) }}
+    - name: {{ $.Values.serviceNamePrefix }}0-front-{{ . }}
+      numReplicas: {{ $.Values.replicas }}
+      responseSize: {{ $.Values.responseSize }}
       script:
       - - call:
-            service: {{ .Values.serviceNamePrefix }}0-back
-            size: {{ .Values.requestSize }}
+            service: {{ $.Values.serviceNamePrefix }}0-back-{{ . }}
+            size: {{ $.Values.requestSize }}
       type: http
-    - name: {{ .Values.serviceNamePrefix }}0-back
-      numReplicas: {{ .Values.replicas }}
-      responseSize: {{ .Values.responseSize }}
+    - name: {{ $.Values.serviceNamePrefix }}0-back-{{ . }}
+      numReplicas: {{ $.Values.replicas }}
+      responseSize: {{ $.Values.responseSize }}
       type: http
+    {{- end }}
 kind: ConfigMap
 metadata:
   labels:
@@ -105,17 +109,19 @@ spec:
   selector:
     app: {{ .Values.serviceNamePrefix }}0
 ---
+{{range until (int .Values.automtls.serviceNumber) }}
+{{- $sn := . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app: service-graph
-  name: {{ $.Values.serviceNamePrefix }}0-front
+  name: {{ $.Values.serviceNamePrefix }}0-front-{{ $sn }}
 spec:
   replicas: {{ $.Values.replicas }}
   selector:
     matchLabels:
-      app: {{ $.Values.serviceNamePrefix }}0-front
+      app: {{ $.Values.serviceNamePrefix }}0-front-{{ $sn }}
   template:
     metadata:
       annotations:
@@ -123,7 +129,7 @@ spec:
         prometheus.io/scrape: "true"
 {{- end }}
       labels:
-        app: {{ $.Values.serviceNamePrefix }}0-front
+        app: {{ $.Values.serviceNamePrefix }}0-front-{{ $sn }}
         role: service
         version: v1
     spec:
@@ -132,7 +138,7 @@ spec:
         - --max-idle-connections-per-host=32
         env:
         - name: SERVICE_NAME
-          value: {{ $.Values.serviceNamePrefix }}0-front
+          value: {{ $.Values.serviceNamePrefix }}0-front-{{ $sn }}
         image: {{ $.Values.serviceGraphImage }}
         name: mock-service
         ports:
@@ -160,13 +166,13 @@ kind: Service
 metadata:
   labels:
     app: service-graph
-  name: {{ .Values.serviceNamePrefix }}0-front
+  name: {{ $.Values.serviceNamePrefix }}0-front-{{ $sn }}
 spec:
   ports:
   - name: http-web
     port: 8080
   selector:
-    app: {{ .Values.serviceNamePrefix }}0-front
+    app: {{ $.Values.serviceNamePrefix }}0-front-{{ $sn }}
 status:
 ---
 {{- range $name := list "istio" "legacy" }}
@@ -175,13 +181,13 @@ kind: Deployment
 metadata:
   labels:
     app: service-graph
-  name: {{ $.Values.serviceNamePrefix }}0-back-{{$name}}
+  name: {{ $.Values.serviceNamePrefix }}0-back-{{ $sn }}-{{$name}}
 spec:
   # Half of each state of the deployment.
   replicas: {{ div $.Values.automtls.backendReplicas 2 }}
   selector:
     matchLabels:
-      app: {{ $.Values.serviceNamePrefix }}0-back
+      app: {{ $.Values.serviceNamePrefix }}0-back-{{ $sn }}
   template:
     metadata:
       annotations:
@@ -192,7 +198,7 @@ spec:
         prometheus.io/scrape: "true"
 {{- end }}
       labels:
-        app: {{ $.Values.serviceNamePrefix }}0-back
+        app: {{ $.Values.serviceNamePrefix }}0-back-{{ $sn }}
         role: service
         version: v1
     spec:
@@ -201,7 +207,7 @@ spec:
         - --max-idle-connections-per-host=32
         env:
         - name: SERVICE_NAME
-          value: {{ $.Values.serviceNamePrefix }}0-back
+          value: {{ $.Values.serviceNamePrefix }}0-back-{{ $sn }}
         image: {{ $.Values.serviceGraphImage }}
         name: mock-service
         ports:
@@ -230,11 +236,13 @@ kind: Service
 metadata:
   labels:
     app: service-graph
-  name: {{ .Values.serviceNamePrefix }}0-back
+  name: {{ $.Values.serviceNamePrefix }}0-back-{{ $sn }}
 spec:
   ports:
   - name: http-web
     port: 8080
   selector:
-    app: {{ .Values.serviceNamePrefix }}0-back
+    app: {{ $.Values.serviceNamePrefix }}0-back-{{ $sn }}
 status:
+{{end}}
+---
